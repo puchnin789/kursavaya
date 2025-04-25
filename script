@@ -1,0 +1,209 @@
+document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.getElementById('chat-messages');
+    const questionSelect = document.getElementById('question-select');
+    const manualInput = document.getElementById('manual-input');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const operatorBtn = document.getElementById('operator-btn');
+    const statusElement = document.getElementById('status');
+    
+    let operatorConnected = false;
+    let chatId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+    const TELEGRAM_BOT_TOKEN = '7903288630:AAHnmJSsZl4CEzPHUGvSx1itd0zQsiQ0_G4';
+    const TELEGRAM_CHAT_ID = '1410525210';
+    let lastCheckTime = 0;
+    
+    // Приветственное сообщение от бота
+    addBotMessage('Здравствуйте! Я виртуальный помощник. Выберите вопрос из списка или позовите оператора, если не нашли ответа.');
+    
+    // Обработчик выбора вопроса
+    questionSelect.addEventListener('change', function() {
+        if (this.value === '') return;
+        
+        if (this.value === 'other') {
+            manualInput.style.display = 'block';
+            questionSelect.style.display = 'none';
+            return;
+        }
+        
+        const questionText = this.options[this.selectedIndex].text;
+        addUserMessage(questionText);
+        
+        // Ответы бота на разные вопросы
+        switch(this.value) {
+            case 'delivery':
+                setTimeout(() => {
+                    addBotMessage('Срок доставки зависит от вашего местоположения. В среднем 2-5 рабочих дней.');
+                }, 1000);
+                break;
+            case 'payment':
+                setTimeout(() => {
+                    addBotMessage('Мы принимаем наличные при получении, банковские карты, Apple Pay, Google Pay и переводы через СБП.');
+                }, 1000);
+                break;
+            case 'return':
+                setTimeout(() => {
+                    addBotMessage('Вы можете вернуть товар в течение 14 дней с момента получения. Товар должен быть в оригинальной упаковке и без следов использования.');
+                }, 1000);
+                break;
+            case 'contact':
+                setTimeout(() => {
+                    addBotMessage('Наши контакты:\nТелефон: +7 (123) 456-78-90\nEmail: support@example.com\nАдрес: г. Москва, ул. Примерная, д. 1');
+                }, 1000);
+                break;
+        }
+        
+        this.value = '';
+    });
+    
+    // Обработчик кнопки отправки сообщения
+    sendBtn.addEventListener('click', function() {
+        const message = userInput.value.trim();
+        if (message) {
+            addUserMessage(message);
+            userInput.value = '';
+            
+            if (!operatorConnected) {
+                setTimeout(() => {
+                    addBotMessage('К сожалению, я не могу ответить на этот вопрос. Пожалуйста, позовите оператора.');
+                }, 1000);
+            } else {
+                // Отправляем сообщение оператору
+                sendMessageToOperator(message);
+            }
+        }
+    });
+    
+    // Обработчик кнопки вызова оператора
+    operatorBtn.addEventListener('click', function() {
+        if (operatorConnected) {
+            addBotMessage('Оператор уже подключен к чату.');
+            return;
+        }
+        
+        addUserMessage('Позвать оператора');
+        addBotMessage('Оператор уведомлен о вашем запросе. Пожалуйста, подождите...');
+        
+        // Отправка уведомления оператору в Telegram
+        const message = `🔔 Новый запрос в поддержку!\nID чата: ${chatId}\nНажмите кнопку ниже чтобы подключиться.`;
+        
+        const keyboard = {
+            inline_keyboard: [[
+                {
+                    text: '✅ Подключиться к чату',
+                    callback_data: `connect_${chatId}`
+                }
+            ]]
+        };
+        
+        sendTelegramMessageWithKeyboard(message, keyboard)
+            .then(() => {
+                // Начинаем проверять сообщения от оператора
+                startPollingOperatorMessages();
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                addBotMessage('Ошибка при вызове оператора. Попробуйте позже.');
+            });
+    });
+    
+    // Функции добавления сообщений
+    function addBotMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'bot-message');
+        messageDiv.textContent = text;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function addUserMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'user-message');
+        messageDiv.textContent = text;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function addOperatorMessage(text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', 'operator-message');
+        messageDiv.textContent = text;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Отправка сообщения с клавиатурой
+    function sendTelegramMessageWithKeyboard(text, keyboard) {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const params = {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: text,
+            reply_markup: JSON.stringify(keyboard)
+        };
+        
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        });
+    }
+    
+    // Отправка сообщения оператору
+    function sendMessageToOperator(text) {
+        const message = `💬 [Чат ${chatId}]: ${text}`;
+        sendTelegramMessage(message);
+    }
+    
+    // Базовая отправка в Telegram
+    function sendTelegramMessage(text) {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const params = {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: text
+        };
+        
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(params)
+        });
+    }
+    
+    // Проверка сообщений от оператора (без БД)
+    function startPollingOperatorMessages() {
+        const polling = setInterval(() => {
+            fetch(`operator_messages.php?chat_id=${chatId}&last_check=${lastCheckTime}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach(msg => {
+                            addOperatorMessage(msg.text);
+                            
+                            if (!operatorConnected) {
+                                operatorConnected = true;
+                                statusElement.textContent = 'Оператор онлайн';
+                                addBotMessage('Оператор подключен к чату. Теперь вы можете общаться напрямую.');
+                            }
+                        });
+                        lastCheckTime = data.last_check;
+                    }
+                    
+                    // Если оператор не подключился в течение 5 минут
+                    if (!operatorConnected && Date.now() - startTime > 300000) {
+                        clearInterval(polling);
+                        addBotMessage('Оператор не ответил. Попробуйте позже.');
+                    }
+                })
+                .catch(error => console.error('Ошибка опроса:', error));
+        }, 2000);
+        
+        const startTime = Date.now();
+        
+        // Остановить при закрытии страницы
+        window.addEventListener('beforeunload', () => clearInterval(polling));
+    }
+});
