@@ -1,0 +1,25 @@
+<?php
+header('Content-Type: application/json');
+
+$data = json_decode(file_get_contents('php://input'), true);
+$chat_id = $data['chat_id'] ?? '';
+$message = $data['message'] ?? '';
+
+if (empty($chat_id) || empty($message)) {
+    die(json_encode(['status' => 'error', 'message' => 'Неверные данные']));
+}
+
+// Папка для хранения сообщений
+$messages_dir = 'operator_messages';
+if (!file_exists($messages_dir)) {
+    mkdir($messages_dir);
+}
+
+// Файл для этого чата
+$chat_file = $messages_dir . '/' . preg_replace('/[^a-z0-9_\-]/i', '', $chat_id) . '.txt';
+
+// Сохраняем сообщение
+file_put_contents($chat_file, $message);
+
+echo json_encode(['status' => 'success']);
+?>
