@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат поддержки</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Поддержка клиентов</h2>
+            <div class="status" id="status">Бот онлайн</div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- Сообщения будут здесь -->
+        </div>
+        <div class="chat-input">
+            <div class="quick-questions">
+                <h3>Выберите вопрос:</h3>
+                <select id="question-select">
+                    <option value="">-- Выберите вопрос --</option>
+                    <option value="delivery">Какой срок доставки?</option>
+                    <option value="payment">Какие способы оплаты вы принимаете?</option>
+                    <option value="return">Как вернуть товар?</option>
+                    <option value="contact">Как с вами связаться?</option>
+                    <option value="other">Другой вопрос</option>
+                </select>
+            </div>
+            <div class="manual-input" id="manual-input" style="display: none;">
+                <textarea id="user-input" placeholder="Введите ваш вопрос..."></textarea>
+                <button id="send-btn">Отправить</button>
+            </div>
+            <button id="operator-btn">Позвать оператора</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
