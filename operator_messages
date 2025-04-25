@@ -1,0 +1,41 @@
+<?php
+header('Content-Type: application/json');
+
+$chat_id = $_GET['chat_id'] ?? '';
+$last_check = $_GET['last_check'] ?? 0;
+
+// Папка для хранения сообщений
+$messages_dir = 'operator_messages';
+if (!file_exists($messages_dir)) {
+    mkdir($messages_dir);
+}
+
+// Файл для этого чата
+$chat_file = $messages_dir . '/' . preg_replace('/[^a-z0-9_\-]/i', '', $chat_id) . '.txt';
+
+$messages = [];
+$current_time = time();
+
+// Если файл существует, проверяем новые сообщения
+if (file_exists($chat_file)) {
+    $file_mtime = filemtime($chat_file);
+    
+    // Если файл был изменен после последней проверки
+    if ($file_mtime > $last_check) {
+        $content = file_get_contents($chat_file);
+        if (!empty($content)) {
+            $messages[] = [
+                'text' => $content,
+                'time' => $file_mtime
+            ];
+            // Очищаем файл после чтения
+            file_put_contents($chat_file, '');
+        }
+    }
+}
+
+echo json_encode([
+    'messages' => $messages,
+    'last_check' => $current_time
+]);
+?>
